@@ -1,5 +1,5 @@
 //=================================================================================================================================//
-//DESCRIPTION: This Indd script visualizes the Anchorpoints and  Handles of the letters in the textframe.
+// DESCRIPTION: This Indd script visualizes the Anchorpoints and  Handles of the letters in the textframe.
 // Samara Keller -- www.samarakeller.com
 // Version v0.1 – 2025‑10‑07
 // License: MIT
