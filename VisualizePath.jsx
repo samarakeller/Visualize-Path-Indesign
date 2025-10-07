@@ -1,5 +1,5 @@
 //=================================================================================================================================//
-// DESCRIPTION: This Indd script visualizes the Anchorpoints and  Handles of the letters in the textframe.
+//DESCRIPTION: This Indd script visualizes the Anchorpoints and  Handles of the letters in the textframe.
 // Samara Keller -- www.samarakeller.com
 // Version v0.1 – 2025‑10‑07
 // License: MIT
@@ -25,46 +25,45 @@
     if (!blackSw.isValid) blackSw = doc.swatches[0];
     if (!whiteSw.isValid) whiteSw = doc.swatches[1];
 
-    var chosenDiameter = 2;
-    var chosenDiameterHandles = 2;
-    var chosenColor = blackSw;
-    var chosenColorHandles = whiteSw;
-    var shapeEllipse = true;
-    var shapeEllipseHandles = true;
+    var settings = {
+        nodeSize: 2,
+        handleSize: 2,
+        nodeColor: blackSw,
+        handleColor: whiteSw,
+        nodeShape: true, // true = ellipse, false = rectangle
+        handleShape: true
+    };
 
     // ---------- UI ----------
     var w = new Window("dialog", "Visualize Path");
     w.alignChildren = "fill";
 
-    var pNodes = w.add("panel", undefined, "Nodes");
-    pNodes.orientation = "row";
-    pNodes.add("statictext", undefined, "Size:");
-    var sizeInput = pNodes.add("edittext", undefined, chosenDiameter.toString());
-    sizeInput.characters = 4;
-    pNodes.add("statictext", undefined, "mm");
-    pNodes.add("statictext", undefined, "Color:");
-    var colorDropdown = pNodes.add("dropdownlist", undefined, ["Black", "White"]);
-    colorDropdown.selection = 0;
-    pNodes.add("statictext", undefined, "Shape:");
-    var shapeDropdown = pNodes.add("dropdownlist", undefined, ["Round", "Square"]);
-    shapeDropdown.selection = 0;
+    function createControlPanel(title, sizeValue, colorIndex, shapeIndex) {
+        var panel = w.add("panel", undefined, title);
+        panel.orientation = "row";
+        
+        panel.add("statictext", undefined, "Size:");
+        var sizeInput = panel.add("edittext", undefined, sizeValue.toString());
+        sizeInput.characters = 4;
+        panel.add("statictext", undefined, "pt");
+        
+        panel.add("statictext", undefined, "Color:");
+        var colorDropdown = panel.add("dropdownlist", undefined, ["Black", "White"]);
+        colorDropdown.selection = colorIndex;
+        
+        panel.add("statictext", undefined, "Shape:");
+        var shapeDropdown = panel.add("dropdownlist", undefined, ["Round", "Square"]);
+        shapeDropdown.selection = shapeIndex;
+        
+        return { sizeInput: sizeInput, colorDropdown: colorDropdown, shapeDropdown: shapeDropdown };
+    }
 
-    var pHandles = w.add("panel", undefined, "Handles");
-    pHandles.orientation = "row";
-    pHandles.add("statictext", undefined, "Size:");
-    var sizeInputH = pHandles.add("edittext", undefined, chosenDiameterHandles.toString());
-    sizeInputH.characters = 4;
-    pHandles.add("statictext", undefined, "mm");
-    pHandles.add("statictext", undefined, "Color:");
-    var colorDropdownH = pHandles.add("dropdownlist", undefined, ["Black", "White"]);
-    colorDropdownH.selection = 1;
-    pHandles.add("statictext", undefined, "Shape:");
-    var shapeDropdownH = pHandles.add("dropdownlist", undefined, ["Round", "Square"]);
-    shapeDropdownH.selection = 0;
+    var nodeControls = createControlPanel("Nodes", settings.nodeSize, 0, 0);
+    var handleControls = createControlPanel("Handles", settings.handleSize, 1, 0);
 
-	var ctrl = w.add("group");
-	var refreshBtn = ctrl.add("button", undefined, "Preview");
-	var resetBtn = ctrl.add("button", undefined, "Reset");
+    var ctrl = w.add("group");
+    var previewBtn = ctrl.add("button", undefined, "Preview");
+    var resetBtn = ctrl.add("button", undefined, "Reset");
 
     var btns = w.add("group");
     btns.alignment = "right";
@@ -78,12 +77,12 @@
     }
 
     function updateValues() {
-        chosenDiameter = parseVal(sizeInput, 2);
-        chosenDiameterHandles = parseVal(sizeInputH, 2);
-        chosenColor = (colorDropdown.selection.index === 1) ? whiteSw : blackSw;
-        chosenColorHandles = (colorDropdownH.selection.index === 1) ? whiteSw : blackSw;
-        shapeEllipse = (shapeDropdown.selection.index === 0);
-        shapeEllipseHandles = (shapeDropdownH.selection.index === 0);
+        settings.nodeSize = parseVal(nodeControls.sizeInput, 2);
+        settings.handleSize = parseVal(handleControls.sizeInput, 2);
+        settings.nodeColor = (nodeControls.colorDropdown.selection.index === 1) ? whiteSw : blackSw;
+        settings.handleColor = (handleControls.colorDropdown.selection.index === 1) ? whiteSw : blackSw;
+        settings.nodeShape = (nodeControls.shapeDropdown.selection.index === 0);
+        settings.handleShape = (handleControls.shapeDropdown.selection.index === 0);
     }
 
     // ---------- event logic ----------
@@ -94,14 +93,14 @@
 
 	// Manual preview only; no live preview to avoid sluggishness/bugs
 
-	refreshBtn.onClick = triggerPreview;
-	resetBtn.onClick = function () {
-		clearPreview();
-        sizeInput.text = sizeInputH.text = "2";
-        colorDropdown.selection = 0;
-        colorDropdownH.selection = 1;
-        shapeDropdown.selection = shapeDropdownH.selection = 0;
-		// Do not auto-preview after reset; user can hit Preview
+    previewBtn.onClick = triggerPreview;
+    resetBtn.onClick = function () {
+        clearPreview();
+        nodeControls.sizeInput.text = handleControls.sizeInput.text = "2";
+        nodeControls.colorDropdown.selection = 0;
+        handleControls.colorDropdown.selection = 1;
+        nodeControls.shapeDropdown.selection = handleControls.shapeDropdown.selection = 0;
+        // Do not auto-preview after reset; user can hit Preview
     };
 	cancelBtn.onClick = function () { clearPreview(); w.close(); };
 
@@ -158,16 +157,25 @@
     }
 
     function processItem(item, layer) {
-        var page = item.parentPage || app.activeWindow.activePage || doc.pages[0];
-        if (item.constructor.name === "TextFrame") {
-            var dup = item.duplicate(page);
-            var outlined = dup.createOutlines(false);
-            dup.remove();
-            var arr = (outlined instanceof Array) ? outlined : [outlined];
-            for (var i = 0; i < arr.length; i++) flattenAndDraw(arr[i], layer);
-            for (var j = 0; j < arr.length; j++) { try { arr[j].remove(); } catch (e) { } }
-        } else {
-            flattenAndDraw(item, layer);
+        try {
+            var page = getActivePage();
+            if (item.constructor.name === "TextFrame") {
+                var dup = item.duplicate(page);
+                var outlined = dup.createOutlines(false);
+                dup.remove();
+                var arr = (outlined instanceof Array) ? outlined : [outlined];
+                for (var i = 0; i < arr.length; i++) {
+                    flattenAndDraw(arr[i], layer);
+                }
+                // Clean up temporary outlined objects
+                for (var j = 0; j < arr.length; j++) {
+                    try { arr[j].remove(); } catch (e) {}
+                }
+            } else {
+                flattenAndDraw(item, layer);
+            }
+        } catch (e) {
+            // Skip items that can't be processed (e.g., deleted items)
         }
     }
 
@@ -185,44 +193,54 @@
             for (var pp = 0; pp < path.pathPoints.length; pp++) {
                 var p = path.pathPoints[pp];
                 var a = p.anchor, l = p.leftDirection, r = p.rightDirection;
-                if (!eq(a, l)) { drawLine(a, l, layer); drawDot(l, layer, chosenColorHandles, chosenDiameterHandles, shapeEllipseHandles); }
-                if (!eq(a, r)) { drawLine(a, r, layer); drawDot(r, layer, chosenColorHandles, chosenDiameterHandles, shapeEllipseHandles); }
-                drawDot(a, layer, chosenColor, chosenDiameter, shapeEllipse);
+                if (!eq(a, l)) {
+                    drawLine(a, l, layer);
+                    drawDot(l, layer, settings.handleColor, settings.handleSize, settings.handleShape);
+                }
+                if (!eq(a, r)) {
+                    drawLine(a, r, layer);
+                    drawDot(r, layer, settings.handleColor, settings.handleSize, settings.handleShape);
+                }
+                drawDot(a, layer, settings.nodeColor, settings.nodeSize, settings.nodeShape);
             }
         }
     }
 
-	function drawLine(a, b, layer) {
-        var page = app.activeWindow.activePage || doc.pages[0];
-		var line = page.graphicLines.add(layer);
+    function drawLine(a, b, layer) {
+        var page = getActivePage();
+        var line = page.graphicLines.add(layer);
         line.strokeWeight = 0.25;
         line.strokeColor = blackSw;
         line.paths[0].entirePath = [a, b];
-		line.label = PREVIEW_LABEL;
+        line.label = PREVIEW_LABEL;
     }
 
-	function drawDot(pt, layer, fillSw, diameter, isEllipse) {
-        var d = diameter;
-        var r = d / 2;
-        var top = pt[1] - r, left = pt[0] - r, bottom = pt[1] + r, right = pt[0] + r;
-        var page = app.activeWindow.activePage || doc.pages[0];
+    function drawDot(pt, layer, fillSw, diameter, isEllipse) {
+        var r = diameter / 2;
+        var bounds = [pt[1] - r, pt[0] - r, pt[1] + r, pt[0] + r];
+        var page = getActivePage();
+        var shape;
+        
         if (isEllipse) {
-			var oval = page.ovals.add(layer, undefined, undefined, {
-                geometricBounds: [top, left, bottom, right],
+            shape = page.ovals.add(layer, undefined, undefined, {
+                geometricBounds: bounds,
                 fillColor: fillSw,
                 strokeColor: blackSw,
                 strokeWeight: 0.25
-			});
-			oval.label = PREVIEW_LABEL;
+            });
         } else {
-			var rect = page.rectangles.add(layer, undefined, undefined, {
-                geometricBounds: [top, left, bottom, right],
+            shape = page.rectangles.add(layer, undefined, undefined, {
+                geometricBounds: bounds,
                 fillColor: fillSw,
                 strokeColor: blackSw,
                 strokeWeight: 0.25
-			});
-			rect.label = PREVIEW_LABEL;
+            });
         }
+        shape.label = PREVIEW_LABEL;
+    }
+
+    function getActivePage() {
+        return app.activeWindow.activePage || doc.pages[0];
     }
 
     function eq(a, b) {
